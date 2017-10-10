@@ -81,28 +81,32 @@ class Game {
   }
 
   printBoard() {
-    if (this._state === GameState.IN_PROGRESS || this._state === GameState.END) {
-      for (let i = 0; i < this._board.size; ++i) {
-        if (i % this._board.width === 0) {
-          this._drawLog(EndOfLine);
+    switch(this._state) {
+      case GameState.NEW:
+      case GameState.IN_PROGRESS:
+      case GameState.END:
+        for (let i = 0; i < this._board.size; ++i) {
+          if (i % this._board.width === 0) {
+            this._drawLog(EndOfLine);
+          }
+          if (this._board.getCell(i) && this._board.getCell(i).isRevealed) {
+            if (this._board.getCell(i).type === 'empty') {
+              this._drawLog('|_|');
+            }
+            if (this._board.getCell(i).type === 'bomb') {
+              this._drawLog('|b|');
+            }
+            if (this._board.getCell(i).type === 'number') {
+              this._drawLog('|' + this._board.getCell(i).number + '|');
+            }
+          } else {
+            this._drawLog('| |');
+          }
         }
-        if (this._board.getCell(i).isRevealed) {
-          if (this._board.getCell(i).type === 'empty') {
-            this._drawLog('|_|');
-          }
-          if (this._board.getCell(i).type === 'bomb') {
-            this._drawLog('|b|');
-          }
-          if (this._board.getCell(i).type === 'number') {
-            this._drawLog('|' + this._board.getCell(i).number + '|');
-          }
-        } else {
-          this._drawLog('| |');
-        }
-      }
-      this._drawLog(EndOfLine);
-    } else {
-      this._errorLog('no game to print');
+        this._drawLog(EndOfLine);
+        break;
+      default:
+        this._errorLog('no game to print');
     }
   }
 }
