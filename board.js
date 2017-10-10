@@ -67,7 +67,8 @@ class Board {
     this._size = width * height;
     this._bombs = bombs;
     this._cells = [];
-    this._lastRevealedCellIndexes = [];
+    this._lastRevealedCells = [];
+    this._allRevealedCells = [];
   }
 
   get width() {
@@ -82,8 +83,12 @@ class Board {
     return this._size;
   }
 
-  get lastRevealedCellIndexes() {
-    return this._lastRevealedCellIndexes;
+  get lastRevealedCells() {
+    return this._lastRevealedCells;
+  }
+
+  get allRevealedCells() {
+    return this._allRevealedCells;
   }
 
   // Completely randomly place bombs,
@@ -169,13 +174,14 @@ class Board {
   }
 
   revealCell(index) {
-    this._lastRevealedCellIndexes = [];
+    this._lastRevealedCells = [];
     this._revealCell(index);
   }
 
   _revealCell(index) {
     if (!this._cells[index].isRevealed) {
-      this._lastRevealedCellIndexes.push(index);
+      this._lastRevealedCells.push(this._cells[index]);
+      this._allRevealedCells.push(this._cells[index]);
       this._cells[index].reveal();
       if (this._cells[index].type === 'empty') {
         this._cells[index].adjacentCellIndexes.forEach((childIndex) => {

@@ -13,7 +13,6 @@ class Game {
   constructor() {
     this._board = new Board();
     this._state = GameState.INIT;
-    this._allRevealedCells = [];
     this._errorLogger = () => {};
     this._drawLogger = () => {};
   }
@@ -46,7 +45,6 @@ class Game {
       return;
     }
 
-    this._allRevealedCells = [];
     this._state = GameState.NEW;
   }
 
@@ -66,18 +64,12 @@ class Game {
     }
   }
 
-  get allRevealedCells() {
-    return this._allRevealedCells;
+  get lastRevealedCells() {
+    return this._board.lastRevealedCells;
   }
 
-  get lastRevealedCells() {
-    const cells = this._board.lastRevealedCellIndexes.map((index) => {
-      return this._board.getCell(index);
-    });
-    if (cells.length) {
-      this._allRevealedCells.push(cells);
-    }
-    return cells;
+  get allRevealedCells() {
+    return this._board.allRevealedCells;
   }
 
   printBoard() {
