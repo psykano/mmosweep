@@ -1,0 +1,116 @@
+<!doctype html>
+<html>
+  <head>
+    <title>mmosweep</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font: 13px Helvetica, Arial; }
+      #board { border: 1px solid black; }
+      #board td {
+        background-color: lightgray;
+        border: 1px solid black;
+        width: 20px;
+        height: 20px;
+        text-align: center;
+      }
+      #board .hidden {
+        background-color: white;
+      }
+      #board .empty {
+        background-color: lightgray;
+      }
+    </style>
+  </head>
+  <body>
+    <button class="newgame" id="easy">BEGINNER</button>
+    <button class="newgame" id="normal">INTERMEDIATE</button>
+    <button class="newgame" id="hard">EXPERT</button>
+    <div id="end"></div>
+    <table id="board" />
+    <script src="/socket.io/socket.io.js"></script>
+    <script
+  src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+  integrity="sha256-k2WSCIexGzOj3Euiig+TlR8gA0EmPjuc79OEeY5L45g="
+  crossorigin="anonymous"></script>
+    <script>
+
+      $(function () {
+        var hiddenCell = 'hidden';
+        var emptyCell = 'empty';
+        var bombCell = '&#x2600;';
+        var cellData = [];
+        var numCols = 0;
+        var numCells = 0;
+
+        var socket = io();
+
+        socket.on('start', function(data) {
+          $('#end').html('');
+          var nums = data.split(" ");
+          numCols = nums[0];
+          numCells = nums[1];
+          for (var i = 0; i < numCells; ++i) {
+            cellData[i] = hiddenCell;
+          }
+          updateTable();
+        });
+
+        socket.on('update', function(data){
+          console.log(data);
+          var cells = JSON.parse(data);
+          for (var i = 0; i < cells.length; ++i) {
+            cell = cells[i];
+            if (cell.type === 'empty') {
+              cellData[cell.index] = emptyCell;
+            } else if (cell.type === 'bomb') {
+              cellData[cell.index] = bombCell;
+            } else if (cell.type === 'number') {
+              cellData[cell.index] = cells[i].number;
+            }
+          }
+          updateTable();
+        });
+
+        socket.on('won', function() {
+          console.log('won');
+          $('#end').html('YOU WIN');
+        });
+
+        socket.on('lost', function() {
+          console.log('lost');
+          $('#end').html('YOU LOSE');
+        });
+
+        $(".newgame").on("click", function(){
+          socket.emit('new', $(this).attr("id"));
+        });
+
+        function updateTable() {
+          if (numCells > 0) {
+            $('#board').remove();
+            $('body').append('<table id="board" />');
+            for (var i = 0; i < numCells; ++i) {
+              if (i % numCols === 0) {
+                tRow = $('<tr>');
+              }
+              cellClass = '';
+              cellText = '';
+              if (cellData[i] === 'hidden' || cellData[i] === 'empty') {
+                cellClass = cellData[i];
+              } else {
+                cellText = cellData[i];
+              }
+              tCell = $('<td id="'+i+'" class="'+cellClass+'">').html(cellText);
+              $('table').append(tRow.append(tCell));
+            }
+
+            $("#board").on("click", "td", function(){
+              socket.emit('cell', $(this).attr("id"));
+            });
+          }
+        }
+      });
+
+    </script>
+  </body>
+</html>

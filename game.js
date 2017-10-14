@@ -6,7 +6,8 @@ var GameState = {
   INIT: 'INIT',
   NEW: 'NEW',
   IN_PROGRESS: 'IN_PROGRESS',
-  END: 'END'
+  WON: 'WON',
+  LOST: 'LOST'
 };
 
 class Game {
@@ -39,7 +40,7 @@ class Game {
     } else if (difficulty === 'normal') {
       this._board.init(16, 16, 40);
     } else if (difficulty === 'hard') {
-      this._board.init(16, 30, 99);
+      this._board.init(30, 16, 99);
     } else {
       this._errorLog('invalid difficulty');
       return;
@@ -53,35 +54,61 @@ class Game {
       this._board.generate(index);
       this._board.revealCell(index);
       this._state = GameState.IN_PROGRESS;
+      return true;
     } else if (this._state === GameState.IN_PROGRESS) {
-      this._board.revealCell(index);
-      if (this._board.getCell(index).type === 'bomb') {
-        this._state = GameState.END;
-        // TODO game over stuff
+      if (!this._board.getCell(index).isRevealed()) {
+        this._board.revealCell(index);
+        if (this._board.getCell(index).type === 'bomb') {
+          this._state = GameState.LOST;
+        } else if (this._board.allRevealedCells.length ===
+          this._board.size - this._board.bombs) {
+          this._state = GameState.WON;
+        }
+        return true;
       }
     } else {
       this._errorLog('unable to click cell in current game state');
     }
+    return false;
   }
 
-  get lastRevealedCells() {
-    return this._board.lastRevealedCells;
+  get board() {
+    return this._board;
   }
 
-  get allRevealedCells() {
-    return this._board.allRevealedCells;
+  isInProgress() {
+    if (this._state === GameState.NEW ||
+      this._state === GameState.IN_PROGRESS) {
+      return true;
+    }
+    return false;
+  }
+
+  isWon() {
+    if (this._state === GameState.WON) {
+      return true;
+    }
+    return false;
+  }
+
+  isLost() {
+    if (this._state === GameState.LOST) {
+      return true;
+    }
+    return false;
   }
 
   printBoard() {
     switch(this._state) {
       case GameState.NEW:
       case GameState.IN_PROGRESS:
-      case GameState.END:
+      case GameState.WON:
+      case GameState.LOST:
         for (let i = 0; i < this._board.size; ++i) {
           if (i % this._board.width === 0) {
             this._drawLog(EndOfLine);
           }
-          if (this._board.getCell(i) && this._board.getCell(i).isRevealed) {
+          if (this._board.getCell(i) && this._board.getCell(i).isRevealed()) {
             if (this._board.getCell(i).type === 'empty') {
               this._drawLog('|_|');
             }

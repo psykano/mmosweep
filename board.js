@@ -13,12 +13,16 @@ class Cell {
     return this._type;
   }
 
-  get isRevealed() {
+  reveal() {
+    this._isRevealed = true;
+  }
+
+  isRevealed() {
     return this._isRevealed;
   }
 
-  reveal() {
-    this._isRevealed = true;
+  serialize() {
+    return { "index":this._index, "type":this._type };
   }
 }
 
@@ -58,9 +62,19 @@ class NumberCell extends Cell {
   increment() {
     ++this._number;
   }
+
+  serialize() {
+    return { "index":this._index, "type":this._type, "number":this._number };
+  }
 }
 
 class Board {
+  constructor() {
+    this._width = 0;
+    this._height = 0;
+    this._size = 0;
+  }
+
   init(width, height, bombs) {
     this._width = width;
     this._height = height;
@@ -81,6 +95,10 @@ class Board {
 
   get size() {
     return this._size;
+  }
+
+  get bombs() {
+    return this._bombs;
   }
 
   get lastRevealedCells() {
@@ -179,7 +197,7 @@ class Board {
   }
 
   _revealCell(index) {
-    if (!this._cells[index].isRevealed) {
+    if (!this._cells[index].isRevealed()) {
       this._lastRevealedCells.push(this._cells[index]);
       this._allRevealedCells.push(this._cells[index]);
       this._cells[index].reveal();
