@@ -87,6 +87,8 @@
 
         socket.on('time', function(data) {
           time = 0;
+          console.log('data: ' + data);
+          console.log('ntp: ' + ntp.offset());
           updateTime(data + ntp.offset());
           clearInterval(timeInterval);
           timeInterval = setInterval(function() {
@@ -181,7 +183,9 @@
         }
 
         function updateTime(delta) {
+          console.log('delta: ' + delta);
           time += parseInt(delta);
+          console.log('time: ' + time);
           var seconds = (time / 1000).toFixed(0);
           if (seconds > 999) {
             seconds = 999;
@@ -195,6 +199,8 @@
           }
           if (seconds > 0) {
             timeText += seconds;
+          } else {
+            timeText += '0';
           }
           $("#time").html(timeText);
         }
