@@ -48,7 +48,6 @@
     <script
       src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.slim.js">
     </script>
-    <script src="js/ntp.min.js"></script>
     <script
       src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
       integrity="sha256-k2WSCIexGzOj3Euiig+TlR8gA0EmPjuc79OEeY5L45g="
@@ -69,7 +68,6 @@
         var timeInterval = 0;
 
         var socket = io();
-        ntp.init(socket);
 
         socket.on('start', function(data) {
           $('#end').html('');
@@ -87,8 +85,6 @@
 
         socket.on('time', function(data) {
           time = 0;
-          console.log('data: ' + data);
-          console.log('ntp: ' + ntp.offset());
           updateTime(data);
           clearInterval(timeInterval);
           timeInterval = setInterval(function() {
@@ -183,9 +179,7 @@
         }
 
         function updateTime(delta) {
-          console.log('delta: ' + delta);
           time += parseInt(delta);
-          console.log('time: ' + time);
           var seconds = (time / 1000).toFixed(0);
           if (seconds > 999) {
             seconds = 999;

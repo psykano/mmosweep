@@ -3,7 +3,6 @@ const express = require('express');
 const app = express();
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
-const ntp = require('socket-ntp');
 const { Game } = require('./game');
 
 const port = process.env.PORT || 3000;
@@ -44,8 +43,6 @@ const socketIoLogger = logSocketIo;
 
 io.on('connection', (socket) => {
   socketIoLogger('a user connected: ' + socket.id);
-
-  ntp.sync(socket);
 
   socket.on('disconnect', function(){
     socketIoLogger('user disconnected: ' + socket.id);
