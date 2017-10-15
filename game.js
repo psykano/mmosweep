@@ -10,6 +10,8 @@ const GameState = {
   LOST: 'LOST'
 };
 
+const OutOfTime = 999000;
+
 class Game {
   constructor() {
     this._board = new Board();
@@ -61,6 +63,11 @@ class Game {
       this._state = GameState.IN_PROGRESS;
       return true;
     } else if (this._state === GameState.IN_PROGRESS) {
+      if (this.currentTime > OutOfTime) {
+        this._endTime = (new Date).getTime();
+        this._state = GameState.LOST;
+        return false;
+      }
       if (!this._board.getCell(index).isRevealed()) {
         this._board.revealCell(index);
         if (this._board.getCell(index).type === 'bomb') {

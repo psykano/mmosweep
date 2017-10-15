@@ -106,12 +106,18 @@ io.on('connection', (socket) => {
             waiting = false;
           }, winnerTimeoutMs);
         } else if (game.isLost()) {
-          io.emit('stime', game.endTime);
           socketIoLogger('game lost');
+          io.emit('stime', game.endTime);
           io.emit('lost');
         }
 
         game.printBoard();
+      } else {
+        if (game.isLost()) {
+          socketIoLogger('game lost');
+          io.emit('stime', game.endTime);
+          io.emit('tlost');
+        }
       }
     }
   });

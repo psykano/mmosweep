@@ -145,6 +145,11 @@
           $('#end').html('YOU LOSE');
         });
 
+        socket.on('tlost', function() {
+          clearInterval(timeInterval);
+          $('#end').html('OUT OF TIME<br>YOU LOSE');
+        });
+
         $(".newgame").on("click", function(){
           socket.emit('new', $(this).attr("id"));
         });
@@ -177,6 +182,9 @@
         function updateTime(delta) {
           time += parseInt(delta);
           var seconds = (time / 1000).toFixed(0);
+          if (seconds > 999) {
+            seconds = 999;
+          }
           var timeText = '';
           if (seconds < 100) {
             timeText += '0';
