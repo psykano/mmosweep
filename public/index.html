@@ -89,7 +89,7 @@
           time = 0;
           console.log('data: ' + data);
           console.log('ntp: ' + ntp.offset());
-          updateTime(data + ntp.offset());
+          updateTime(data);
           clearInterval(timeInterval);
           timeInterval = setInterval(function() {
             updateTime(100);
