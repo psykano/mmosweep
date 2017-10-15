@@ -87,7 +87,7 @@
 
         socket.on('time', function(data) {
           time = 0;
-          updateTime(data + Math.abs(ntp.offset()));
+          updateTime(data + ntp.offset());
           clearInterval(timeInterval);
           timeInterval = setInterval(function() {
             updateTime(100);
@@ -193,7 +193,9 @@
               timeText += '0';
             }
           }
-          timeText += seconds;
+          if (seconds > 0) {
+            timeText += seconds;
+          }
           $("#time").html(timeText);
         }
       });
