@@ -1,8 +1,8 @@
 const { Board } = require('./board');
 
-var EndOfLine = require('os').EOL;
+const EndOfLine = require('os').EOL;
 
-var GameState = {
+const GameState = {
   INIT: 'INIT',
   NEW: 'NEW',
   IN_PROGRESS: 'IN_PROGRESS',
@@ -16,6 +16,8 @@ class Game {
     this._state = GameState.INIT;
     this._errorLogger = () => {};
     this._drawLogger = () => {};
+    this._startTime = 0;
+    this._endTime = 0;
   }
 
   set errorLogger(logger) {
@@ -46,11 +48,14 @@ class Game {
       return;
     }
 
+    this._startTime = 0;
+    this._endTime = 0;
     this._state = GameState.NEW;
   }
 
   clickCell(index) {
     if (this._state === GameState.NEW) {
+      this._startTime = (new Date).getTime();
       this._board.generate(index);
       this._board.revealCell(index);
       this._state = GameState.IN_PROGRESS;
@@ -59,9 +64,11 @@ class Game {
       if (!this._board.getCell(index).isRevealed()) {
         this._board.revealCell(index);
         if (this._board.getCell(index).type === 'bomb') {
+          this._endTime = (new Date).getTime();
           this._state = GameState.LOST;
         } else if (this._board.allRevealedCells.length ===
           this._board.size - this._board.bombs) {
+          this._endTime = (new Date).getTime();
           this._state = GameState.WON;
         }
         return true;
@@ -74,6 +81,18 @@ class Game {
 
   get board() {
     return this._board;
+  }
+
+  get startTime() {
+    return this._startTime;
+  }
+
+  get currentTime() {
+    return (new Date).getTime() - this._startTime;
+  }
+
+  get endTime() {
+    return this._endTime - this._startTime;
   }
 
   isInProgress() {

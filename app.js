@@ -1,16 +1,20 @@
 const path = require('path');
-const app = require('express')();
+const express = require('express');
+const app = express();
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
+const ntp = require('socket-ntp');
 const { Game } = require('./game');
 
 const port = process.env.PORT || 3000;
-const publicPath = __dirname + '/public';
+const publicPath = path.join(__dirname, 'public');
 const logging = true;
 const winnerTimeoutMs = 10000;
 
+app.use(express.static(publicPath));
+
 app.get('/', function(req, res){
-  const file = path.normalize(publicPath + '/index.html');
+  const file = path.join(publicPath, 'index.html');
   res.sendFile(file);
 });
 
@@ -26,7 +30,7 @@ game = new Game();
 game.errorLogger = printGameError;
 game.drawLogger = drawGame;
 
-let waiting = false;
+let waiting = false; // TODO refactor into game
 let winnerSocketId = 0;
 let winnerTimeout = 0;
 
@@ -40,6 +44,9 @@ const socketIoLogger = logSocketIo;
 
 io.on('connection', (socket) => {
   socketIoLogger('a user connected: ' + socket.id);
+
+  ntp.sync(socket);
+
   socket.on('disconnect', function(){
     socketIoLogger('user disconnected: ' + socket.id);
   });
@@ -50,6 +57,9 @@ io.on('connection', (socket) => {
       return cell.serialize();
     });
     io.emit('update', JSON.stringify(serializedRevealedCells));
+    if (game.startTime > 0) {
+      io.emit('time', game.currentTime);
+    }
   }
 
   socket.on('new', (data) => {
@@ -78,12 +88,15 @@ io.on('connection', (socket) => {
     const num = parseInt(data);
     if (num >= 0 && num < game.board.size) {
       if (game.clickCell(num)) {
+        io.emit('time', game.currentTime);
+
         const serializedRevealedCells = game.board.lastRevealedCells.map((cell) => {
           return cell.serialize();
         });
         io.emit('update', JSON.stringify(serializedRevealedCells));
 
         if (game.isWon()) {
+          io.emit('stime', game.endTime);
           waiting = true;
           winnerSocketId = socket.id;
           socketIoLogger('game won: ' + winnerSocketId);
@@ -93,6 +106,7 @@ io.on('connection', (socket) => {
             waiting = false;
           }, winnerTimeoutMs);
         } else if (game.isLost()) {
+          io.emit('stime', game.endTime);
           socketIoLogger('game lost');
           io.emit('lost');
         }
@@ -110,6 +124,7 @@ io.on('connection', (socket) => {
       clearTimeout(winnerTimeout);
       name = data.replace(/[^0-9a-z]/gi, '').substring(0, 2);
       socketIoLogger('name submitted: ' + name); //removeme
+      socketIoLogger('...for time: ' + game.endTime); //removeme
       // TODO submit name to highscore in db
     }
   });

@@ -4,8 +4,20 @@
     <title>mmosweep</title>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font: 13px Helvetica, Arial; }
-      #board { border: 1px solid black; }
+      body {
+        font: 13px Helvetica, Arial;
+        margin-top: 10px;
+        text-align: center;
+      }
+      button {
+        padding: 4px 6px;
+        margin: 5px 0;
+      }
+      #board {
+        border: 1px solid black;
+        margin-left: auto;
+        margin-right: auto;
+      }
       #board td {
         background-color: lightgray;
         border: 1px solid black;
@@ -25,20 +37,25 @@
     <button class="newgame" id="easy">BEGINNER</button>
     <button class="newgame" id="normal">INTERMEDIATE</button>
     <button class="newgame" id="hard">EXPERT</button>
+    <div id="time">000</div>
     <div id="end"></div>
     <div id="name" hidden>
       Initials: <input id="initials" type="text" name="initials" maxlength="2">
       <button id="submitname">SUBMIT</button>
     </div>
     <table id="board" />
-    <script src="/socket.io/socket.io.js"></script>
     <script
-  src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
-  integrity="sha256-k2WSCIexGzOj3Euiig+TlR8gA0EmPjuc79OEeY5L45g="
-  crossorigin="anonymous"></script>
+      src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.slim.js">
+    </script>
+    <script src="js/ntp.min.js"></script>
+    <script
+      src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+      integrity="sha256-k2WSCIexGzOj3Euiig+TlR8gA0EmPjuc79OEeY5L45g="
+      crossorigin="anonymous">
+    </script>
     <script>
 
-      $(function () {
+      $(function() {
         var hiddenCell = 'hidden';
         var emptyCell = 'empty';
         var bombCell = '&#x2600;';
@@ -47,18 +64,39 @@
         var numCols = 0;
         var numCells = 0;
         var nameTimeout = 0;
+        var time = 0;
+        var timeInterval = 0;
 
         var socket = io();
+        ntp.init(socket);
 
         socket.on('start', function(data) {
           $('#end').html('');
-          var nums = data.split(" ");
-          numCols = nums[0];
-          numCells = nums[1];
+          var params = data.split(' ');
+          numCols = params[0];
+          numCells = params[1];
           for (var i = 0; i < numCells; ++i) {
             cellData[i] = hiddenCell;
           }
           updateTable();
+
+          time = 0;
+          updateTime(0);
+        });
+
+        socket.on('time', function(data) {
+          time = 0;
+          updateTime(data + ntp.offset());
+          clearInterval(timeInterval);
+          timeInterval = setInterval(function() {
+            updateTime(100);
+          }, 100);
+        });
+
+        socket.on('stime', function(data) {
+          clearInterval(timeInterval);
+          time = data;
+          updateTime(0);
         });
 
         socket.on('update', function(data){
@@ -77,6 +115,7 @@
         });
 
         socket.on('won', function() {
+          clearInterval(timeInterval);
           $('#end').html('YOU WIN');
 
           for (var i = 0; i < numCells; ++i) {
@@ -102,6 +141,7 @@
         });
 
         socket.on('lost', function() {
+          clearInterval(timeInterval);
           $('#end').html('YOU LOSE');
         });
 
@@ -132,6 +172,21 @@
               socket.emit('cell', $(this).attr("id"));
             });
           }
+        }
+
+        function updateTime(delta) {
+          time += parseInt(delta);
+          var seconds = (time / 1000).toFixed(0);
+          var timeText = '';
+          if (seconds < 100) {
+            timeText += '0';
+            if (seconds < 10) {
+              timeText += '0';
+            }
+          }
+          timeText += seconds;
+          $("#time").html(timeText);
+          console.log(timeText);
         }
       });
 
