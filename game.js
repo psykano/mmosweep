@@ -39,7 +39,9 @@ class Game {
   }
 
   newGame(difficulty) {
-    if (difficulty === 'easy') {
+  	if (difficulty === 'veryeasy') {
+  	  this._board.init(4, 4, 4);
+    } else if (difficulty === 'easy') {
       this._board.init(8, 8, 10);
     } else if (difficulty === 'normal') {
       this._board.init(16, 16, 40);

@@ -67,7 +67,9 @@ io.on('connection', (socket) => {
     if (waiting) return;
     if (!game.isInProgress()) {
       let difficulty = '';
-      if (data === 'easy') {
+      if (data === 'veryeasy') {
+        difficulty = 'veryeasy';
+      } else if (data === 'easy') {
         difficulty = 'easy';
       } else if (data === 'normal') {
         difficulty = 'normal';
