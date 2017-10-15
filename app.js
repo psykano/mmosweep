@@ -7,6 +7,7 @@ const { Game } = require('./game');
 const port = process.env.PORT || 3000;
 const publicPath = __dirname + '/public';
 const logging = true;
+const winnerTimeoutMs = 10000;
 
 app.get('/', function(req, res){
   const file = path.normalize(publicPath + '/index.html');
@@ -24,6 +25,10 @@ function drawGame(message) {
 game = new Game();
 game.errorLogger = printGameError;
 game.drawLogger = drawGame;
+
+let waiting = false;
+let winnerSocketId = 0;
+let winnerTimeout = 0;
 
 function logSocketIo(message) {
   console.log('SocketIO - ' + message);
@@ -49,6 +54,7 @@ io.on('connection', (socket) => {
 
   socket.on('new', (data) => {
     socketIoLogger('on new: ' + data);
+    if (waiting) return;
     if (!game.isInProgress()) {
       let difficulty = '';
       if (data === 'easy') {
@@ -68,6 +74,7 @@ io.on('connection', (socket) => {
 
   socket.on('cell', (data) => {
     socketIoLogger('on cell: ' + data);
+    if (waiting) return;
     const num = parseInt(data);
     if (num >= 0 && num < game.board.size) {
       if (game.clickCell(num)) {
@@ -77,8 +84,14 @@ io.on('connection', (socket) => {
         io.emit('update', JSON.stringify(serializedRevealedCells));
 
         if (game.isWon()) {
-          socketIoLogger('game won');
+          waiting = true;
+          winnerSocketId = socket.id;
+          socketIoLogger('game won: ' + winnerSocketId);
           io.emit('won');
+          socket.emit('name');
+          winnerTimeout = setTimeout(function() {
+            waiting = false;
+          }, winnerTimeoutMs);
         } else if (game.isLost()) {
           socketIoLogger('game lost');
           io.emit('lost');
@@ -86,6 +99,18 @@ io.on('connection', (socket) => {
 
         game.printBoard();
       }
+    }
+  });
+
+  socket.on('name', (data) => {
+    socketIoLogger('on name: ' + data);
+    if (!waiting) return;
+    if (game.isWon() && winnerSocketId === socket.id) {
+      waiting = false;
+      clearTimeout(winnerTimeout);
+      name = data.replace(/[^0-9a-z]/gi, '').substring(0, 2);
+      socketIoLogger('name submitted: ' + name); //removeme
+      // TODO submit name to highscore in db
     }
   });
 });

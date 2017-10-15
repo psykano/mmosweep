@@ -26,6 +26,10 @@
     <button class="newgame" id="normal">INTERMEDIATE</button>
     <button class="newgame" id="hard">EXPERT</button>
     <div id="end"></div>
+    <div id="name" hidden>
+      Initials: <input id="initials" type="text" name="initials" maxlength="2">
+      <button id="submitname">SUBMIT</button>
+    </div>
     <table id="board" />
     <script src="/socket.io/socket.io.js"></script>
     <script
@@ -42,6 +46,7 @@
         var cellData = [];
         var numCols = 0;
         var numCells = 0;
+        var nameTimeout = 0;
 
         var socket = io();
 
@@ -80,6 +85,20 @@
             }
           }
           updateTable();
+        });
+
+        socket.on('name', function() {
+          $('#name').show();
+          nameTimeout = setTimeout(function() {
+            $('#name').hide();
+          }, 7000);
+        });
+
+        $("#submitname").on("click", function() {
+          clearTimeout(nameTimeout);
+          socket.emit('name', $("#initials").val());
+          $("#initials").val('');
+          $('#name').hide();
         });
 
         socket.on('lost', function() {
