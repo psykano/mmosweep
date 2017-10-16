@@ -11,6 +11,7 @@ const GameState = {
 };
 
 const OutOfTime = 999000;
+const winnerTimeoutMs = 10000;
 
 class Game {
   constructor() {
@@ -20,6 +21,11 @@ class Game {
     this._drawLogger = () => {};
     this._startTime = 0;
     this._endTime = 0;
+    this._outOfTimeCb = () => {};
+    this._outOfTimeInterval = 0;
+    this._waiting = false;
+    this._winnerId = 0;
+    this._winnerTimeout = 0;
   }
 
   set errorLogger(logger) {
@@ -38,7 +44,24 @@ class Game {
     this._drawLogger(drawMessage);
   }
 
+  set outOfTimeCb(cb) {
+    this._outOfTimeCb = cb;
+  }
+
+  set winnerId(id) {
+    this._winnerId = id;
+  }
+
+  get winnerId() {
+    return this._winnerId;
+  }
+
   newGame(difficulty) {
+    if (this._waiting || this.isInProgress()) {
+      this._errorLog('unable to start game: current game waiting/in progress');
+      return false;
+    }
+
   	if (difficulty === 'veryeasy') {
   	  this._board.init(4, 4, 4);
     } else if (difficulty === 'easy') {
@@ -49,36 +72,58 @@ class Game {
       this._board.init(30, 16, 99);
     } else {
       this._errorLog('invalid difficulty');
-      return;
+      return false;
     }
 
     this._startTime = 0;
     this._endTime = 0;
     this._state = GameState.NEW;
+    return true;
+  }
+
+  _gameOver(state) {
+    clearInterval(this._outOfTimeInterval);
+    this._endTime = (new Date).getTime();
+    this._state = state;
   }
 
   clickCell(index) {
+    if (this._waiting) {
+      this._errorLog('unable to click: current game waiting');
+      return false;
+    }
+
+    if (index < 0 || index >= this._board.size) {
+      this._errorLog('unable to click: index out of bounds');
+      return false;
+    }
+
     if (this._state === GameState.NEW) {
       this._startTime = (new Date).getTime();
       this._board.generate(index);
       this._board.revealCell(index);
+
+      this._outOfTimeInterval = setInterval(() => {
+        if (this.currentTime > OutOfTime) {
+          this._gameOver(GameState.LOST);
+          this._outOfTimeCb();
+        }
+      }, 1000);
+
       this._state = GameState.IN_PROGRESS;
       return true;
     } else if (this._state === GameState.IN_PROGRESS) {
-      if (this.currentTime > OutOfTime) {
-        this._endTime = (new Date).getTime();
-        this._state = GameState.LOST;
-        return false;
-      }
       if (!this._board.getCell(index).isRevealed()) {
         this._board.revealCell(index);
         if (this._board.getCell(index).type === 'bomb') {
-          this._endTime = (new Date).getTime();
-          this._state = GameState.LOST;
+          this._gameOver(GameState.LOST);
         } else if (this._board.allRevealedCells.length ===
           this._board.size - this._board.bombs) {
-          this._endTime = (new Date).getTime();
-          this._state = GameState.WON;
+          this._gameOver(GameState.WON);
+          this._waiting = true;
+          this._winnerTimeout = setTimeout(() => {
+            this._waiting = false;
+          }, winnerTimeoutMs);
         }
         return true;
       }
@@ -110,6 +155,18 @@ class Game {
       return true;
     }
     return false;
+  }
+
+  isWaiting() {
+    if (this._waiting) {
+      return true;
+    }
+    return false;
+  }
+
+  doneWaitingForWinner() {
+    this._waiting = false;
+    clearTimeout(this._winnerTimeout);
   }
 
   isWon() {

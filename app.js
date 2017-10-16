@@ -8,7 +8,6 @@ const { Game } = require('./game');
 const port = process.env.PORT || 3000;
 const publicPath = path.join(__dirname, 'public');
 const logging = true;
-const winnerTimeoutMs = 10000;
 
 app.use(express.static(publicPath));
 
@@ -29,10 +28,6 @@ game = new Game();
 game.errorLogger = printGameError;
 game.drawLogger = drawGame;
 
-let waiting = false; // TODO refactor into game
-let winnerSocketId = 0;
-let winnerTimeout = 0;
-
 function logSocketIo(message) {
   console.log('SocketIO - ' + message);
 }
@@ -41,10 +36,18 @@ const socketIoLogger = logSocketIo;
 // To disable socket.io logging
 //const socketIoLogger = () => {};
 
+function outOfTime() {
+  socketIoLogger('time over');
+  io.emit('stime', game.endTime);
+  io.emit('tlost');
+}
+
+game.outOfTimeCb = outOfTime;
+
 io.on('connection', (socket) => {
   socketIoLogger('a user connected: ' + socket.id);
 
-  socket.on('disconnect', function(){
+  socket.on('disconnect', (reason) => {
     socketIoLogger('user disconnected: ' + socket.id);
   });
 
@@ -61,72 +64,42 @@ io.on('connection', (socket) => {
 
   socket.on('new', (data) => {
     socketIoLogger('on new: ' + data);
-    if (waiting) return;
-    if (!game.isInProgress()) {
-      let difficulty = '';
-      if (data === 'veryeasy') {
-        difficulty = 'veryeasy';
-      } else if (data === 'easy') {
-        difficulty = 'easy';
-      } else if (data === 'normal') {
-        difficulty = 'normal';
-      } else if (data === 'hard') {
-        difficulty = 'hard';
-      }
-
-      if (difficulty) {
-        game.newGame(difficulty);
-        io.emit('start', game.board.width + ' ' + game.board.size);
-      }
+    if (game.newGame(data)) {
+      io.emit('start', game.board.width + ' ' + game.board.size);
     }
   });
 
   socket.on('cell', (data) => {
     socketIoLogger('on cell: ' + data);
-    if (waiting) return;
     const num = parseInt(data);
-    if (num >= 0 && num < game.board.size) {
-      if (game.clickCell(num)) {
-        io.emit('time', game.currentTime);
+    if (game.clickCell(num)) {
+      io.emit('time', game.currentTime);
 
-        const serializedRevealedCells = game.board.lastRevealedCells.map((cell) => {
-          return cell.serialize();
-        });
-        io.emit('update', JSON.stringify(serializedRevealedCells));
+      const serializedRevealedCells = game.board.lastRevealedCells.map((cell) => {
+        return cell.serialize();
+      });
+      io.emit('update', JSON.stringify(serializedRevealedCells));
 
-        if (game.isWon()) {
-          io.emit('stime', game.endTime);
-          waiting = true;
-          winnerSocketId = socket.id;
-          socketIoLogger('game won: ' + winnerSocketId);
-          io.emit('won');
-          socket.emit('name');
-          winnerTimeout = setTimeout(function() {
-            waiting = false;
-          }, winnerTimeoutMs);
-        } else if (game.isLost()) {
-          socketIoLogger('game lost');
-          io.emit('stime', game.endTime);
-          io.emit('lost');
-        }
-
-        game.printBoard();
-      } else {
-        if (game.isLost()) {
-          socketIoLogger('game lost');
-          io.emit('stime', game.endTime);
-          io.emit('tlost');
-        }
+      if (game.isWon()) {
+        game.winnerId = socket.id;
+        socketIoLogger('game won: ' + game.winnerId);
+        io.emit('stime', game.endTime);
+        io.emit('won');
+        socket.emit('name');
+      } else if (game.isLost()) {
+        socketIoLogger('game lost');
+        io.emit('stime', game.endTime);
+        io.emit('lost');
       }
+
+      game.printBoard();
     }
   });
 
   socket.on('name', (data) => {
     socketIoLogger('on name: ' + data);
-    if (!waiting) return;
-    if (game.isWon() && winnerSocketId === socket.id) {
-      waiting = false;
-      clearTimeout(winnerTimeout);
+    if (game.isWaiting() && game.isWon() && game.winnerId === socket.id) {
+      game.doneWaitingForWinner();
       name = data.replace(/[^0-9a-z]/gi, '').substring(0, 2);
       socketIoLogger('name submitted: ' + name); //removeme
       socketIoLogger('...for time: ' + game.endTime); //removeme
